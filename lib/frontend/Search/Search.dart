@@ -1,5 +1,14 @@
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:radio/frontend/Search/SearchResult.dart';
+import 'package:http/http.dart' as http;
+
+import '../API/API.dart';
+import '../Common/Artist.dart';
+import '../Common/Playlist.dart';
+import '../Common/Song.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -11,6 +20,49 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   String input_text = '';
   bool _is_submitted = false;
+  List<Song> data = [];
+  List<Playlist> playlists = [];
+  List<Artist> artists = [];
+  List<int> songFavourites = [];
+  API api = API();
+  Future<List<Song>> fetchSongs(searchInput) async {
+    String url = "http://10.0.2.2:8090/searchSong?searchInput=$searchInput";
+    // final response = await http.get(Uri.parse('http://10.0.2.2:8090/searchSong?searchInput=$searchInput'));
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Song.fromJson(json)).toList();
+    } else {
+      print("day la url  ----------   " + url);
+      throw Exception('Failed to fetch songs');
+    }
+  }
+
+  Future<List<Playlist>> fetchPlayList(searchInput) async {
+    String url = "http://10.0.2.2:8090/searchPlayList?searchInput=$searchInput";
+    // final response = await http.get(Uri.parse('http://10.0.2.2:8090/searchPlayList?searchInput=$searchInput'));
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Playlist.fromJson(json)).toList();
+    } else {
+      print("day la url  ----------   " + url);
+      throw Exception('Failed to fetch songs');
+    }
+  }
+
+  Future<List<Artist>> fetchArtist(searchInput) async {
+    String url = "http://10.0.2.2:8090/searchArtist?searchInput=$searchInput";
+    // final response = await http.get(Uri.parse('http://10.0.2.2:8090/searchPlayList?searchInput=$searchInput'));
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Artist.fromJson(json)).toList();
+    } else {
+      print("day la url  ----------   " + url);
+      throw Exception('Failed to fetch songs');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +103,9 @@ class _SearchPageState extends State<SearchPage> {
                       icon: Icon(Icons.arrow_back_sharp),
                       color: Colors.grey.withOpacity(0.9),
                     ),
-                    SizedBox(width: 12,),
+                    SizedBox(
+                      width: 12,
+                    ),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -89,7 +143,7 @@ class _SearchPageState extends State<SearchPage> {
                                     _is_submitted = true;
                                   });
                                 },
-                                onTap: (){
+                                onTap: () {
                                   setState(() {
                                     _is_submitted = false;
                                   });
@@ -121,9 +175,54 @@ class _SearchPageState extends State<SearchPage> {
                                   border: InputBorder.none,
                                 ),
                                 onChanged: (text) {
+                                  fetchSongs(text).then((songs) {
+                                    setState(() {
+                                      data = songs;
+                                      print("day la du lieu lay tu server:");
+                                      print(data);
+                                      for (var song in data) {
+                                        print(
+                                            "ID: ${song.songId},Author: ${song.songAuthor}, Name: ${song.songName}, Image: ${song.songImage}, URL: ${song.songUrl}");
+                                      }
+                                    });
+                                  }).catchError((error) {
+                                    print(
+                                        "Lỗi khi lấy dữ liệu từ máy chủ: $error");
+                                  });
                                   setState(() {
                                     input_text = text;
                                   });
+
+                                  fetchPlayList(text).then((data) {
+                                    setState(() {
+                                      playlists = data;
+                                      print("day la du lieu lay tu server:");
+                                      // print(data);
+                                      for (var artist in data) {
+                                        print(
+                                            "ID: ${artist.playlistId},Name: ${artist.playlistName}, Image: ${artist.playlistImage}");
+                                      }
+                                    });
+                                  }).catchError((error) {
+                                    print(
+                                        "Lỗi khi lấy dữ liệu từ máy chủ: $error");
+                                  });
+
+                                  fetchArtist(text).then((data) {
+                                    setState(() {
+                                      artists = data;
+                                      print("day la du lieu lay tu server:");
+                                      // print(data);
+                                      for (var artist in data) {
+                                        print(
+                                            "ID: ${artist.artistId},Name: ${artist.artistName}, Image: ${artist.artistImage}");
+                                      }
+                                    });
+                                  }).catchError((error) {
+                                    print(
+                                        "Lỗi khi lấy dữ liệu từ máy chủ: $error");
+                                  });
+
                                   print(input_text);
                                 },
                               ),
@@ -260,342 +359,382 @@ class _SearchPageState extends State<SearchPage> {
                                 )
                               ]),
                         )
-                      : Container(
-                          padding: EdgeInsets.only(left: 32),
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.only(right: 32),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.grey,
-                                            // Màu sắc của đường viền
-                                            width: 1.0, // Độ dày của đường viền
-                                          ),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Icon(
-                                            Icons.search_sharp,
-                                            color: Colors.grey.withOpacity(0.6),
-                                          ),
-                                          SizedBox(
-                                            width: 12,
-                                          ),
-                                          Text(
-                                            'thiên lý ơi',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: 12,
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.grey,
-                                            // Màu sắc của đường viền
-                                            width: 1.0, // Độ dày của đường viền
-                                          ),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Icon(
-                                            Icons.search_sharp,
-                                            color: Colors.grey.withOpacity(0.6),
-                                          ),
-                                          SizedBox(
-                                            width: 12,
-                                          ),
-                                          Text(
-                                            'thiên lý ơi',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: 12,
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.grey,
-                                            // Màu sắc của đường viền
-                                            width: 1.0, // Độ dày của đường viền
-                                          ),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Icon(
-                                            Icons.search_sharp,
-                                            color: Colors.grey.withOpacity(0.6),
-                                          ),
-                                          SizedBox(
-                                            width: 12,
-                                          ),
-                                          Text(
-                                            'thiên lý ơi',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: 32,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        image: DecorationImage(
-                                          image: AssetImage(
-                                              'assets/des/troi_giau_troi_mang_di.jpg'),
-                                          fit: BoxFit.cover,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                      : Expanded(
+                          child: Container(
+                            padding: EdgeInsets.only(left: 32),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.only(right: 32),
+                                    child: Column(
                                       children: [
-                                        Text(
-                                          'Trời giấu trời mang đi',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Amee - Viruss',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.normal,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
+                                        ...data
+                                            .asMap()
+                                            .entries
+                                            .take(3)
+                                            .map((entry) {
+                                          final index = entry.key;
+                                          final song = entry.value;
+
+                                          return Container(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 6, horizontal: 4),
+                                            margin: EdgeInsets.only(bottom: 12),
+                                            decoration: BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                  color: Colors.grey,
+                                                  // Màu sắc của đường viền
+                                                  width:
+                                                      1.0, // Độ dày của đường viền
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(
+                                                  Icons.search_sharp,
+                                                  color: Colors.grey
+                                                      .withOpacity(0.6),
+                                                ),
+                                                SizedBox(
+                                                  width: 12,
+                                                ),
+                                                Text(
+                                                  '${song.songName}',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                )
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
                                       ],
                                     ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.play_arrow,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 0,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.more_vert,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(
-                                height: 32,
-                              ),
-                              Container(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        image: DecorationImage(
-                                          image: AssetImage(
-                                              'assets/des/troi_giau_troi_mang_di.jpg'),
-                                          fit: BoxFit.cover,
+                                  ),
+                                  ...data.asMap().entries.map((entry) {
+                                    final index = entry.key;
+                                    final song = entry.value;
+                                    return GestureDetector(
+                                      onTap: (){
+                                        Navigator.pushNamed(context, '/MusicDisplay', arguments: {
+                                          'index': index,
+                                          'name': song.songName,
+                                          'songId': song.songId,
+                                          'author': song.songAuthor,
+                                          'imgUrl': song.songImage,
+                                          'musicUrl': song.songUrl,
+                                          'listSong': data,
+                                        });
+                                      },
+                                      child: Container(
+                                        margin: EdgeInsets.only(bottom: 32),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 60,
+                                              height: 60,
+                                              decoration: BoxDecoration(
+                                                image: DecorationImage(
+                                                  image: Image.network(
+                                                      song.songImage).image,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                                borderRadius:
+                                                BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 12,
+                                            ),
+                                            Expanded(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    song.songName,
+                                                    style: TextStyle(
+                                                      color: Colors.black,
+                                                      fontSize: 17,
+                                                      fontWeight: FontWeight.bold,
+                                                      letterSpacing: 0.6,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    song.songAuthor,
+                                                    style: TextStyle(
+                                                      color: Colors.black,
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.normal,
+                                                      letterSpacing: 0.4,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 12,
+                                            ),
+                                            IconButton(
+                                              onPressed: () {},
+                                              icon: Icon(
+                                                Icons.play_arrow,
+                                                size: 36,
+                                                color: Colors.grey.withOpacity(0.8),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 0,
+                                            ),
+                                            IconButton(
+                                              onPressed: () {},
+                                              icon: Icon(
+                                                Icons.more_vert,
+                                                size: 36,
+                                                color: Colors.grey.withOpacity(0.8),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                    ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Trời giấu trời mang đi',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Amee - Viruss',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.normal,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.play_arrow,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 0,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.more_vert,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                    );
+                                  }).toList(),
+                                  // Container(
+                                  //   child: Row(
+                                  //     children: [
+                                  //       Container(
+                                  //         width: 60,
+                                  //         height: 60,
+                                  //         decoration: BoxDecoration(
+                                  //           image: DecorationImage(
+                                  //             image: AssetImage(
+                                  //                 'assets/des/troi_giau_troi_mang_di.jpg'),
+                                  //             fit: BoxFit.cover,
+                                  //           ),
+                                  //           borderRadius:
+                                  //               BorderRadius.circular(8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       Column(
+                                  //         mainAxisAlignment:
+                                  //             MainAxisAlignment.spaceBetween,
+                                  //         crossAxisAlignment:
+                                  //             CrossAxisAlignment.start,
+                                  //         children: [
+                                  //           Text(
+                                  //             'Trời giấu trời mang đi',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 17,
+                                  //               fontWeight: FontWeight.bold,
+                                  //               letterSpacing: 0.6,
+                                  //             ),
+                                  //           ),
+                                  //           Text(
+                                  //             'Amee - Viruss',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 15,
+                                  //               fontWeight: FontWeight.normal,
+                                  //               letterSpacing: 0.4,
+                                  //             ),
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.play_arrow,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 0,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.more_vert,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // ),
+                                  // SizedBox(
+                                  //   height: 32,
+                                  // ),
+                                  // Container(
+                                  //   child: Row(
+                                  //     children: [
+                                  //       Container(
+                                  //         width: 60,
+                                  //         height: 60,
+                                  //         decoration: BoxDecoration(
+                                  //           image: DecorationImage(
+                                  //             image: AssetImage(
+                                  //                 'assets/des/troi_giau_troi_mang_di.jpg'),
+                                  //             fit: BoxFit.cover,
+                                  //           ),
+                                  //           borderRadius:
+                                  //               BorderRadius.circular(8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       Column(
+                                  //         mainAxisAlignment:
+                                  //             MainAxisAlignment.spaceBetween,
+                                  //         crossAxisAlignment:
+                                  //             CrossAxisAlignment.start,
+                                  //         children: [
+                                  //           Text(
+                                  //             'Trời giấu trời mang đi',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 17,
+                                  //               fontWeight: FontWeight.bold,
+                                  //               letterSpacing: 0.6,
+                                  //             ),
+                                  //           ),
+                                  //           Text(
+                                  //             'Amee - Viruss',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 15,
+                                  //               fontWeight: FontWeight.normal,
+                                  //               letterSpacing: 0.4,
+                                  //             ),
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.play_arrow,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 0,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.more_vert,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // ),
+                                  // SizedBox(
+                                  //   height: 32,
+                                  // ),
+                                  // Container(
+                                  //   child: Row(
+                                  //     children: [
+                                  //       Container(
+                                  //         width: 60,
+                                  //         height: 60,
+                                  //         decoration: BoxDecoration(
+                                  //           image: DecorationImage(
+                                  //             image: AssetImage(
+                                  //                 'assets/des/troi_giau_troi_mang_di.jpg'),
+                                  //             fit: BoxFit.cover,
+                                  //           ),
+                                  //           borderRadius:
+                                  //               BorderRadius.circular(8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       Column(
+                                  //         mainAxisAlignment:
+                                  //             MainAxisAlignment.spaceBetween,
+                                  //         crossAxisAlignment:
+                                  //             CrossAxisAlignment.start,
+                                  //         children: [
+                                  //           Text(
+                                  //             'Trời giấu trời mang đi',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 17,
+                                  //               fontWeight: FontWeight.bold,
+                                  //               letterSpacing: 0.6,
+                                  //             ),
+                                  //           ),
+                                  //           Text(
+                                  //             'Amee - Viruss',
+                                  //             style: TextStyle(
+                                  //               color: Colors.black,
+                                  //               fontSize: 15,
+                                  //               fontWeight: FontWeight.normal,
+                                  //               letterSpacing: 0.4,
+                                  //             ),
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 12,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.play_arrow,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(
+                                  //         width: 0,
+                                  //       ),
+                                  //       IconButton(
+                                  //         onPressed: () {},
+                                  //         icon: Icon(
+                                  //           Icons.more_vert,
+                                  //           size: 36,
+                                  //           color: Colors.grey.withOpacity(0.8),
+                                  //         ),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // ),
+                                  // SizedBox(
+                                  //   height: 32,
+                                  // ),
+                                ],
                               ),
-                              SizedBox(
-                                height: 32,
-                              ),
-                              Container(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        image: DecorationImage(
-                                          image: AssetImage(
-                                              'assets/des/troi_giau_troi_mang_di.jpg'),
-                                          fit: BoxFit.cover,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Trời giấu trời mang đi',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Amee - Viruss',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.normal,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(
-                                      width: 12,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.play_arrow,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 0,
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: Icon(
-                                        Icons.more_vert,
-                                        size: 36,
-                                        color: Colors.grey.withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(
-                                height: 32,
-                              ),
-                            ],
+                            ),
                           ),
                         ))
-                  : SearchResult(), //suggestion box
+                  : SearchResult(data,playlists,artists), //suggestion box
             ],
           ),
         ),

@@ -3,7 +3,10 @@ import 'dart:math';
 
 import 'package:audioplayers_platform_interface/src/api/player_state.dart';
 import 'package:flutter/material.dart';
+import 'package:radio/frontend/API/API.dart';
+import 'package:radio/frontend/Common/Song.dart';
 import 'package:radio/frontend/MusicPlayer/MusicPlayer.dart';
+import 'package:radio/frontend/User/UserSession.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
 import 'package:gradient_icon/gradient_icon.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -13,12 +16,12 @@ late final GlobalKey<_SpinCircleAvatarState> _spinCircleAvatarKey = GlobalKey<_S
 
 class MusicPlayerDisplay extends StatefulWidget {
   const MusicPlayerDisplay({super.key});
-
   @override
   State<MusicPlayerDisplay> createState() => _MusicPlayerDisplayState();
 }
 
 class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
+  API api = API();
   double _currentSliderValue = 0;
   bool musicPlaying = true;
   String curName = '';
@@ -26,19 +29,51 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
   int curIndex = 0;
   String curImgPath ='';
   String curMusicPath = '';
+  int curSongId = 0;
   Duration duration = Duration.zero;
   int totalOfAudio = 0;
   Duration position = Duration.zero;
   double _progress = 0;
-  List<Map<String,dynamic>> listSongs = [];
+  List<Song> listSongs = [];
   bool initData = false;
   bool replay = false;
   SpinCircleAvatar? spinner;
+  MusicPlayer musicPlayer = MusicPlayer();
+  List<int> songFavourites = [];
+
+  fetchDataAndPlayMusic(data) async {
+    // Your asynchronous logic to fetch data
+    // Assuming data is fetched from somewhere asynchronously and stored in 'data'
+    // Update the state using setState
+    setState(() {
+      curName = data['name'];
+      curAuthor = data['author'];
+      curIndex = data['index'];
+      curSongId = data['songId'];
+      curImgPath = data['imgUrl'];
+      curMusicPath = data['musicUrl'];
+      initData = true;
+      listSongs = data['listSong'];
+      spinner = SpinCircleAvatar(key: _spinCircleAvatarKey, curImgUrl: curImgPath);
+      print('$curIndex - $curName - $curAuthor - $curImgPath - $curMusicPath');
+    });
+    // Now, you can use await to ensure musicplayer.play is completed before proceeding
+    await musicPlayer.play(curMusicPath);
+    var respone =await api.getSongAddedFavourite(UserSession().getUserId());
+    setState(() {
+      songFavourites = respone;
+      for(int id in songFavourites)
+        {
+          print(id);
+        }
+    });
+  }
+
   @override
   void initState()  {
     // TODO: implement initState
     super.initState();
-      MusicPlayer.getInstance().getAudioPlayer()?.onDurationChanged.listen((event) {
+      musicPlayer.getAudioPlayer()?.onDurationChanged.listen((event) {
         if(mounted) {
           setState(() {
             if(event.inSeconds!=0)
@@ -47,7 +82,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
           });
         }
       });
-      MusicPlayer.getInstance().getAudioPlayer()?.onPositionChanged.listen((event) {
+      musicPlayer.getAudioPlayer()?.onPositionChanged.listen((event) {
         if(mounted) {
           setState(() {
             position = event;
@@ -66,7 +101,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
       //
       // }
 
-      MusicPlayer.getInstance().getAudioPlayer()?.onPlayerStateChanged.listen((event) {
+      musicPlayer.getAudioPlayer()?.onPlayerStateChanged.listen((event) async {
         if(mounted){
         if (event != null && event is PlayerState) {
             switch (event) {
@@ -82,11 +117,12 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                     musicPlaying = true;
                     spinner?.resumeAnimation();
                   });
+                  spinner?.resumeAnimation();
                   break;
                 }
               case PlayerState.paused:
                 {
-                  setState(() {
+                  setState((){
                     musicPlaying = false;
                     spinner?.pauseAnimation();
                   });
@@ -94,7 +130,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                 }
               case PlayerState.completed:
                 {
-                  setState(() {
+                  setState((){
                     musicPlaying = false;
                     spinner?.pauseAnimation();
                   });
@@ -107,75 +143,91 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
         }
       });
 
-      MusicPlayer.getInstance().getAudioPlayer()?.onPlayerComplete.listen((event) async{
-        await MusicPlayer.getInstance().getAudioPlayer()?.stop();
-        await MusicPlayer.getInstance().play(curMusicPath);
+      musicPlayer.getAudioPlayer()?.onPlayerComplete.listen((event) async{
+        await musicPlayer.stopAudio();
+        spinner?.setValueAnimation(0);
+        // await MusicPlayer.getInstance().pause();
+        // await MusicPlayer.getInstance().seekAudio(0);
+        // await MusicPlayer.getInstance().resume(curMusicPath);
+        // await MusicPlayer.getInstance().pause();
+        await musicPlayer.play(curMusicPath);
+        print("day la music url hien tai" + curMusicPath);
         if(!replay)
         {
-          await MusicPlayer.getInstance().pause();
-          position = Duration.zero;
-          _currentSliderValue = 0;
-          _progress = 0;
+          await musicPlayer.pause();
+          setState(() {
+            position = Duration.zero;
+            _currentSliderValue = 0;
+            _progress = 0;
+          });
+          // playNextAudio();
         }
-        spinner?.setValueAnimation(0);
         // await MusicPlayer.getInstance().replayAudio(curMusicPath);
       });
   }
 
-  void playNextAudio()
+  void playNextAudio() async
   {
     int n = listSongs.length;
-    int newIndex = (curIndex) % n;
+    int newIndex = (curIndex+1) % n;
     print(listSongs);
-    print('prevIndex: $curIndex - newIndex: $newIndex');
+    print('prevIndex: $curIndex - newIndex: $curIndex');
     setState(() {
-      curName = listSongs[newIndex]['name']!;
-      curAuthor = listSongs[newIndex]['author']!;
-      curIndex = listSongs[newIndex]['index']!;
-      curImgPath = listSongs[newIndex]['imgUrl']!;
-      curMusicPath = listSongs[newIndex]['songUrl']!;
+      curName = listSongs[newIndex].songName!;
+      curIndex = newIndex;
+      curSongId = listSongs[newIndex].songId;
+      curImgPath = listSongs[newIndex].songImage!;
+      curMusicPath = listSongs[newIndex].songUrl!;
+      curAuthor = listSongs[newIndex].songAuthor;
       spinner?.setImg(curImgPath);
+      _progress=0;
     });
-    MusicPlayer.getInstance().play(curMusicPath);
+    // await musicPlayer.deposeAudio();
+    await musicPlayer.play(curMusicPath);
   }
 
-  void playPreviousAuido()
+  void playPreviousAuido() async
   {
     int n = listSongs.length;
-    int newIndex = (curIndex + n - 2) % n;
+    int newIndex = (curIndex + n - 1) % n;
     setState(() {
-      curName = listSongs[newIndex]['name'];
-      curAuthor = listSongs[newIndex]['author'];
-      curIndex = listSongs[newIndex]['index'];
-      curImgPath = listSongs[newIndex]['imgUrl'];
-      curMusicPath = listSongs[newIndex]['songUrl'];
+      curName = listSongs[newIndex].songName;
+      curAuthor = listSongs[newIndex].songAuthor;
+      curIndex = newIndex;
+      curSongId = listSongs[newIndex].songId;
+      curImgPath = listSongs[newIndex].songImage;
+      curMusicPath = listSongs[newIndex].songUrl;
       spinner?.setImg(curImgPath);
+      _progress=0;
     });
-    MusicPlayer.getInstance().play(curMusicPath);
+    // await musicPlayer.deposeAudio();
+    await musicPlayer.play(curMusicPath);
   }
 
   @override
   void dispose() {
     // TODO: implement dispose
     super.dispose();
-    MusicPlayer.getInstance().getAudioPlayer()?.stop();
+    musicPlayer.getAudioPlayer()?.dispose();
+    // MusicPlayer.getInstance().getAudioPlayer()?.stop();
   }
 
   @override
   Widget build(BuildContext context) {
     Map data = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
-    if (!initData) {
-      setState(() {
-        curName = data['name'];
-        curAuthor = data['author'];
-        curIndex = data['index'];
-        curImgPath = data['imgUrl'];
-        curMusicPath = data['musicUrl'];
-        initData = true;
-        listSongs = data['listSong'];
-        spinner = SpinCircleAvatar(key: _spinCircleAvatarKey,curImgUrl: curImgPath,);
-        print('$curIndex - $curName - $curAuthor - $curImgPath - $curMusicPath');
-      });
+    if (!initData){
+      // setState(() {
+      //   curName = data['name'];
+      //   curAuthor = data['author'];
+      //   curIndex = data['index'];
+      //   curImgPath = data['imgUrl'];
+      //   curMusicPath = data['musicUrl'];
+      //   initData = true;
+      //   listSongs = data['listSong'];
+      //   spinner = SpinCircleAvatar(key: _spinCircleAvatarKey,curImgUrl: curImgPath,);
+      //   print('$curIndex - $curName - $curAuthor - $curImgPath - $curMusicPath');
+      // });
+      fetchDataAndPlayMusic(data);
     }
     return Scaffold(
       body: Stack(
@@ -205,6 +257,8 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                   letterSpacing: 2,
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1, // Giới hạn số dòng là 2
+                overflow: TextOverflow.ellipsis, // Hiển thị dấu "..." nếu nội dung vượt quá
               ),
               SizedBox(height: 12,),
               GradientText(
@@ -215,6 +269,8 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                   letterSpacing: 2,
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1, // Giới hạn số dòng là 2
+                overflow: TextOverflow.ellipsis,
               ),
               Text(
                 'NTM RADIO PRO',
@@ -283,7 +339,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                       size: 42,
                     ),
                     onTap: (){
-                      MusicPlayer.getInstance().replayAudio(curMusicPath);
+                      musicPlayer.replayAudio(curMusicPath);
                     },
                   ),
                   InkWell(
@@ -304,7 +360,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                       // setState(() {
                       //   musicPlaying=!musicPlaying;
                       // });
-                      MusicPlayer.getInstance().resume(curMusicPath);
+                      musicPlayer.resume(curMusicPath);
                     },
                     child: GradientIcon(
                       icon: Icons.play_arrow,
@@ -319,7 +375,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                       // setState(() {
                       //   musicPlaying=!musicPlaying;
                       // });
-                      MusicPlayer.getInstance().pause();
+                      musicPlayer.pause();
                     },
                     child: GradientIcon(
                       icon: Icons.pause,
@@ -339,7 +395,9 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                       ),
                       size: 42,
                     ),
-                    onTap: playPreviousAuido,
+                    onTap: (){
+                      playPreviousAuido();
+                    },
                   ),
                   InkWell(
                     onTap: (){
@@ -357,8 +415,21 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                     ),
                   ),
                   InkWell(
-                    child: Image(
-                      image: AssetImage('assets/images/Vector.png'),
+                    child: !songFavourites.contains(curSongId) ? IconButton(
+                      icon: Icon(Icons.favorite_border,
+                        color: Colors.purpleAccent.withOpacity(0.9),
+                        size: 28,),
+                      onPressed: ()async{
+                        await api.addSongFavourite(curSongId, UserSession().getUserId());
+                        var data = await api.getSongAddedFavourite(UserSession().getUserId());
+                        setState(() {
+                          songFavourites = data;
+                        });
+                      },
+                    ) : Icon(
+                      Icons.favorite,
+                      color: Colors.purpleAccent.withOpacity(0.9),
+                      size: 28,
                     ),
                   )
                 ],
@@ -388,12 +459,12 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
                           setState(() {
                             _currentSliderValue = value;
                             _progress = value / 200.0;
-                            MusicPlayer.getInstance().seekAudio((value * totalOfAudio / 100.0).toInt());
+                            musicPlayer.seekAudio((value * totalOfAudio / 100.0).toInt());
                           });
                         },
                         onChangeEnd: (double value){
                           if(value!=100)
-                            MusicPlayer.getInstance().resume(curMusicPath);
+                            musicPlayer.resume(curMusicPath);
                         },
                       ),
                     ),
@@ -491,7 +562,7 @@ class _MusicPlayerDisplayState extends State<MusicPlayerDisplay> {
             left: 24,
             child: IconButton(
               onPressed: (){
-                MusicPlayer.getInstance().stopAudio();
+                musicPlayer.stopAudio();
                 Navigator.pop(context);
               },
               icon: Icon(
@@ -625,7 +696,7 @@ class _SpinCircleAvatarState extends State<SpinCircleAvatar>
     return RotationTransition(
       turns: Tween(begin: 1.0, end: 0.0).animate(_controller),
       child: CircleAvatar(
-        backgroundImage: AssetImage(curImgUrl),
+        backgroundImage: Image.network(curImgUrl).image,
       ),
     );
   }

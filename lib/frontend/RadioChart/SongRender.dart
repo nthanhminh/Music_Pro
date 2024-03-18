@@ -1,16 +1,18 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:radio/frontend/Common/Song.dart';
 import 'package:radio/frontend/MusicPlayer/MusicPlayer.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
 
 class SongRender extends StatefulWidget {
   int index=0;
+  int songId = 0;
   String name='';
   String author='';
   String imgUrl='';
   String musicUrl='';
-  List<Map<String,dynamic>> data = [];
-  SongRender(this.index, this.name, this.author, this.imgUrl,this.musicUrl,this.data);
+  List<Song> data = [];
+  SongRender(this.index,this.songId,this.name, this.author, this.imgUrl,this.musicUrl,this.data);
 
   @override
   State<SongRender> createState() => _SongRenderState();
@@ -23,25 +25,26 @@ class _SongRenderState extends State<SongRender> {
     Duration position = Duration.zero;
     return TextButton(
       onPressed: () async {
-        MusicPlayer.getInstance().play(widget.musicUrl);
+        // widget.index!=12 ? MusicPlayer.getInstance().play(widget.musicUrl) : MusicPlayer.getInstance().playUrl(widget.musicUrl);
         Navigator.pushNamed(context, '/MusicDisplay', arguments: {
-          'index': widget.index,
+          'index': widget.index-1,
           'name' : widget.name,
+          'songId': widget.songId,
           'author': widget.author,
           'imgUrl': widget.imgUrl,
           'musicUrl' : widget.musicUrl,
           'listSong' : widget.data,
         });
-        MusicPlayer.getInstance().getAudioPlayer()?.onDurationChanged.listen((event) {
-          setState(() {
-            duration = event;
-          });
-        });
-        MusicPlayer.getInstance().getAudioPlayer()?.onPositionChanged.listen((event) {
-          setState(() {
-            position = event;
-          });
-        });
+        // MusicPlayer.getInstance().getAudioPlayer()?.onDurationChanged.listen((event) {
+        //   setState(() {
+        //     duration = event;
+        //   });
+        // });
+        // MusicPlayer.getInstance().getAudioPlayer()?.onPositionChanged.listen((event) {
+        //   setState(() {
+        //     position = event;
+        //   });
+        // });
 
       },
       child: Container(
@@ -97,7 +100,8 @@ class _SongRenderState extends State<SongRender> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundImage: AssetImage('${widget.imgUrl}'),
+              // backgroundImage: widget.index!=12 ? AssetImage('${widget.imgUrl}') : Image.network(widget.imgUrl).image,
+                backgroundImage: Image.network(widget.imgUrl).image
             ),
             SizedBox(
               width: 12,

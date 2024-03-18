@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:radio/frontend/MusicPlayer/MusicPlayer.dart';
 import 'package:radio/frontend/RadioChart/SongRender.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import '../Common/Song.dart';
 
 class RadioChart extends StatefulWidget {
   const RadioChart({super.key});
@@ -10,6 +14,34 @@ class RadioChart extends StatefulWidget {
 }
 
 class _RadioChartState extends State<RadioChart> {
+
+  List<Song> _data = [];
+  Future<List<Song>> fetchSongs() async {
+    final response = await http.get(Uri.parse('http://10.0.2.2:8090/getTop10Song'));
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Song.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to fetch songs');
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+    print("fetching");
+    fetchSongs().then((songs) {
+      setState(() {
+        _data = songs;
+        print("day la du lieu lay tu server:");
+        print(_data);
+        for (var song in _data) {
+          print("ID: ${song.songId}, Name: ${song.songName}, Image: ${song.songImage}, URL: ${song.songUrl}");
+        }
+      });
+    }).catchError((error) {
+      print("Lỗi khi lấy dữ liệu từ máy chủ: $error");
+    });
+  }
 
   bool isReadingMoreTurnOn = true;
   int limit = 5;
@@ -91,6 +123,13 @@ class _RadioChartState extends State<RadioChart> {
       'author': 'West Life',
       'imgUrl': 'assets/des/zingAvatar.jpg',
       'songUrl': 'music/beautifulInWhite.mp3'
+    },
+    {
+      'index' : 12,
+      'name'  : 'Thiên Lý Ơi',
+      'author': 'Jack',
+      'imgUrl': 'https://433b-2405-4803-fb99-aec0-1c9e-5aad-52bb-5250.ngrok-free.app/getNewImage/28',
+      'songUrl': 'https://433b-2405-4803-fb99-aec0-1c9e-5aad-52bb-5250.ngrok-free.app/getNewSong/125'
     }
   ];
   @override
@@ -130,12 +169,23 @@ class _RadioChartState extends State<RadioChart> {
                             fontWeight: FontWeight.bold),
                       ),
                     ),
-                    ...fakeData.map((songs){
-                      if(isReadingMoreTurnOn == true && songs['index'] > limit)
-                      {
-                          return SizedBox();
+                    ..._data.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final song = entry.value;
+
+                      if (isReadingMoreTurnOn == true && index >= limit) {
+                        return SizedBox();
                       }
-                      return SongRender(songs['index'], songs['name'], songs['author'], songs['imgUrl'], songs['songUrl'],fakeData);
+
+                      return SongRender(
+                        index+1,
+                        song.songId,
+                        song.songName,
+                        song.songAuthor,
+                        song.songImage,
+                        song.songUrl,
+                        _data,
+                      );
                     }).toList(),
                     // SongRender(1, 'Trời giấu trời mang điaaaa', 'Amee - Viruss',
                     //     'assets/des/troi_giau_troi_mang_di.jpg'),
